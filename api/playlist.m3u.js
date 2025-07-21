@@ -31,13 +31,52 @@ async function getDataFromSheet() {
 
 function renderToM3U(channels, res) {
   let m3u = "#EXTM3U\n";
-  for (const ch of channels) {
-    if (!ch.DRM){
-    m3u += `#EXTINF:-1 tvg-id="${ch.id}${ch.DRM}" tvg-logo="${ch.logo}" group-title="${ch.group}",${ch.name}\n`;
+/*  for (const ch of channels) {
+    if (ch.DRM == false){
+    m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${ch.logo}" group-title="${ch.group}",${ch.name}\n`;
     m3u += `${ch.streamURL}\n`; // ← lưu ý field phải đúng
   }
+  if(ch.DRM == true){
+      m3u += `
+     #EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${ch.logo}" group-title="${ch.group}",${ch.name}\n
+      #EXTVLCOPT:http-user-agent=ExoPlayerDemo/2.15.1 (Linux; Android 13) \n
+      #KODIPROP:inputstreamaddon=inputstream.adaptive\n
+      #KODIPROP:inputstream.adaptive.manifest_type=dash\n
+      #KODIPROP:inputstream.adaptive.license_type=clearkey\n
+      #KODIPROP:inputstream.adaptive.license_key=http://livesport.io.vn/key.xml\n
+      ${ch.streamURL} \n
+     
+      `
+    
   }
+  }*/
+  for (const ch of channels) {
+    const logoChannel = ch.logo.startsWith("http")?ch.logo:`https://lmg159z.github.io/soixamTV/wordspage/image/logo/${ch.logo}`;
 
+  if (ch.DRM === true) {
+   if (ch.typeClearnKey === "base64"){
+   m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+    m3u += `#EXTVLCOPT:http-user-agent=ExoPlayerDemo/2.15.1 (Linux; Android 13)\n`;
+    m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`;
+    m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+    m3u += `#KODIPROP:inputstream.adaptive.license_type=clearkey\n`;
+    m3u += `#KODIPROP:inputstream.adaptive.license_key={ "keys":[ { "kty":"oct", "k":"${ch.key}", "kid":"${ch.keyID}" } ], "type":"temporary" }\n`;
+    m3u += `${ch.streamURL}\n`;
+    }
+    if (ch.typeClearnKey === "hex"){
+     m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`
+     m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+     m3u += `#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey\n`;
+     m3u += `#KODIPROP:inputstream.adaptive.license_key=${ch.keyID}:${ch.key}\n`;
+     m3u += `#EXTINF:-1 tvg-id="" group-title="${ch.group}" tvg-logo="${logoChannel}",${ch.name}\n`;
+     m3u += `${ch.streamURL}\n`;
+    }
+     m3u += `${ch.streamURL}\n`;
+  } else {
+    m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+    m3u += `${ch.streamURL}\n`;
+  }
+}
   res.setHeader("Content-Type", "audio/x-mpegurl");
   res.setHeader("Content-Disposition", 'inline; filename="playlist.m3u"');
   res.status(200).send(m3u);
