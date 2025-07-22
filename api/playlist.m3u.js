@@ -63,7 +63,7 @@ function renderToM3U(channels, res) {
     m3u += `#KODIPROP:inputstream.adaptive.license_key={ "keys":[ { "kty":"oct", "k":"${ch.key}", "kid":"${ch.keyID}" } ], "type":"temporary" }\n`;
     m3u += `${ch.streamURL}\n`;
     }
-    if (ch.typeClearnKey === "hex"){
+   if (ch.typeClearnKey === "hex"){
      m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`
      m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
      m3u += `#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey\n`;
@@ -71,7 +71,14 @@ function renderToM3U(channels, res) {
      m3u += `#EXTINF:-1 tvg-id="" group-title="${ch.group}" tvg-logo="${logoChannel}",${ch.name}\n`;
      m3u += `${ch.streamURL}\n`;
     }
+   if (ch.typeClearnKey === "url"){
+     m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`
+     m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+     m3u += `#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey\n`;
+     m3u += `#KODIPROP:inputstream.adaptive.license_key=${ch.kURL}\n`;
+     m3u += `#EXTINF:-1 tvg-id="" group-title="${ch.group}" tvg-logo="${logoChannel}",${ch.name}\n`;
      m3u += `${ch.streamURL}\n`;
+   }
   } else {
     m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
     m3u += `${ch.streamURL}\n`;
