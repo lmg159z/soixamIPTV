@@ -67,7 +67,7 @@ function renderToM3U(channels, res) {
       m3u += `#EXTVLCOPT:http-user-agent=ExoPlayerDemo/2.15.1 (Linux; Android 13)\n`;
       m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`;
       m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
-      m3u += `#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey\n`;
+      m3u += `#KODIPROP:inputstream.adaptive.license_type=Clearkey\n`;
       m3u += `#KODIPROP:inputstream.adaptive.license_key=${ch.keyID}:${ch.key}\n`;
       m3u += `#EXTINF:-1 tvg-id="" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
       m3u += `${ch.streamURL}\n`;
