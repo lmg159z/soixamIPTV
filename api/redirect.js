@@ -9,7 +9,7 @@ export default function handler(req, res) {
   if (isAllowed) {
     // ✅ Redirect đến URL1 (playlist thật)
     res.writeHead(302, {
-      Location: "/api/playlist.m3u"
+      Location: "https://google.com"
     });
     res.end();
   } else {
