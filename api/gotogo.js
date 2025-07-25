@@ -1,24 +1,25 @@
+import axios from "axios";
+
 export default async function handler(req, res) {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Missing url" });
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      redirect: "follow", // Theo dõi redirect tới cùng
+    // Axios sẽ follow redirect và giữ URL cuối
+    const response = await axios.get(url, {
+      maxRedirects: 5,
+      timeout: 7000,
       headers: {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept": "*/*"
       }
     });
 
-    // Sau khi follow, lấy URL cuối cùng:
-    const finalURL = response.url;
+    const finalUrl = response.request.res.responseUrl;
 
     res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.status(200).json({ redirect: finalURL });
-
+    res.status(200).json({ redirect: finalUrl });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Internal error" });
   }
 }
