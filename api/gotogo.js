@@ -6,26 +6,23 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(targetUrl, {
-      method: "GET",
-      redirect: "follow",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Vercel fetch)",
+        "User-Agent": "Mozilla/5.0 (Node.js)",
+        "Referer": targetUrl, // tuỳ site
       },
+      redirect: "follow",
     });
 
-    // Nếu là HLS .m3u8, trả về URL cuối
-    return res.status(200).json({
-      finalUrl: response.url,
-    });
+    const contentType = response.headers.get("content-type") || "text/plain";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Access-Control-Allow-Origin", "*");
 
-    // Hoặc trả nội dung:
-    // const content = await response.text();
-    // res.setHeader("Content-Type", response.headers.get("content-type") || "text/plain");
-    // res.setHeader("Access-Control-Allow-Origin", "*");
-    // return res.status(200).send(content);
+    // Gửi lại toàn bộ response như proxy
+    const body = await response.text(); // dùng text() để parse m3u8 hoặc html
+    return res.status(200).send(body);
 
   } catch (err) {
-    console.error("Lỗi khi fetch:", err.message);
-    return res.status(500).send("Lỗi khi truy cập URL");
+    console.error("Lỗi:", err.message);
+    return res.status(500).send("Không truy cập được URL gốc");
   }
 }
