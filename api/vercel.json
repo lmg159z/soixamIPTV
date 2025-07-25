@@ -1,8 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/playlist.m3u",
-      "dest": "/api/playlist.m3u.js"
+      "source": "/playlist.m3u",
+      "destination": "/api/redirect.js"
     }
   ]
 }
