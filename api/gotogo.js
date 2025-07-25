@@ -1,23 +1,22 @@
 // pages/api/proxy.js
+
 export default async function handler(req, res) {
-  const target = req.query.url;
-  if (!target) return res.status(400).json({ error: "Thiếu URL" });
+  const { url } = req.query;
+  if (!url) return res.status(400).send("Missing URL");
 
   try {
-    const response = await fetch(target, {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow', // theo redirect
       headers: {
-        "User-Agent": "ExoPlayerDemo/2.15.1 (Linux; Android 13)",
-        "Referer": target
+        'User-Agent': 'Mozilla/5.0'
       }
     });
 
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    const buffer = await response.arrayBuffer();
-    res.status(response.status).send(Buffer.from(buffer));
-  } catch (error) {
-    res.status(403).json({ error: "Fetch lỗi", status: 403 });
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+    const stream = response.body;
+    stream.pipeTo(Writable.toWeb(res));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 }
