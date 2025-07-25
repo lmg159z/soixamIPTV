@@ -1,36 +1,29 @@
 export default async function handler(req, res) {
-  const { url } = req.query;
-
-  if (!url || !url.startsWith('http')) {
-    return res.status(400).json({ error: 'Thiếu hoặc sai URL' });
-  }
-
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'ExoPlayerDemo/2.15.1 (Linux; Android 13)',
-        'Referer': getRefererByHost(url),
-      },
-    });
+    const target = req.query.url;
 
-    // Copy headers hợp lệ
-    for (const [key, value] of response.headers.entries()) {
-      res.setHeader(key, value);
+    if (!target) {
+      return res.status(400).json({ error: "Thiếu URL" });
     }
 
-    const data = await response.arrayBuffer();
-    res.status(response.status).send(Buffer.from(data));
-  } catch (error) {
-    res.status(500).json({ error: 'Lỗi khi fetch URL: ' + error.message });
-  }
-}
+    const response = await fetch(target, {
+      headers: {
+        "User-Agent": "ExoPlayerDemo/2.15.1 (Linux; Android 13)",
+        "Referer": target
+      }
+    });
 
-// Tuỳ chỉnh Referer theo domain
-function getRefererByHost(url) {
-  const hostname = new URL(url).hostname;
-  const map = {
-    'xem.truyenhinh.click': 'https://xem.truyenhinh.click',
-    'some-site.com': 'https://some-site.com',
-  };
-  return map[hostname] || `https://${hostname}`;
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Fetch lỗi", status: response.status });
+    }
+
+    // Lấy nội dung và content-type
+    const contentType = response.headers.get("content-type") || "text/plain";
+    const body = await response.text();
+
+    res.setHeader("Content-Type", contentType);
+    return res.status(200).send(body);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 }
