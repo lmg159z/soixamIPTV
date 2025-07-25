@@ -1,8 +1,9 @@
 // pages/api/iptv.ts
-
 export default async function handler(req, res) {
   const { url } = req.query;
   if (!url) return res.status(400).send("Thiếu ?url");
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   try {
     const decodedUrl = decodeURIComponent(url as string);
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
 
     const contentType = fetchRes.headers.get("content-type") || "";
 
-    // Nếu là file .m3u8 thì sửa đường dẫn nội bộ
     if (decodedUrl.endsWith(".m3u8") || contentType.includes("application/vnd.apple.mpegurl")) {
       const originalText = await fetchRes.text();
       const base = decodedUrl.split("/").slice(0, -1).join("/");
@@ -32,9 +32,7 @@ export default async function handler(req, res) {
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
       res.send(rewritten);
     } else {
-      // Trả về trực tiếp dữ liệu binary
-      const contentType = fetchRes.headers.get("content-type") || "application/octet-stream";
-      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Type", contentType || "application/octet-stream");
       const buffer = await fetchRes.arrayBuffer();
       res.send(Buffer.from(buffer));
     }
