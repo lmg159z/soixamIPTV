@@ -1,11 +1,9 @@
+// pages/api/proxy.js
 export default async function handler(req, res) {
+  const target = req.query.url;
+  if (!target) return res.status(400).json({ error: "Thiếu URL" });
+
   try {
-    const target = req.query.url;
-
-    if (!target) {
-      return res.status(400).json({ error: "Thiếu URL" });
-    }
-
     const response = await fetch(target, {
       headers: {
         "User-Agent": "ExoPlayerDemo/2.15.1 (Linux; Android 13)",
@@ -13,17 +11,13 @@ export default async function handler(req, res) {
       }
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: "Fetch lỗi", status: response.status });
-    }
-
-    // Lấy nội dung và content-type
-    const contentType = response.headers.get("content-type") || "text/plain";
-    const body = await response.text();
-
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
     res.setHeader("Content-Type", contentType);
-    return res.status(200).send(body);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    const buffer = await response.arrayBuffer();
+    res.status(response.status).send(Buffer.from(buffer));
+  } catch (error) {
+    res.status(403).json({ error: "Fetch lỗi", status: 403 });
   }
 }
