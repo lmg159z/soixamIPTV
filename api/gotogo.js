@@ -1,32 +1,27 @@
 export default async function handler(req, res) {
-  const target = req.query.url;
+  const targetUrl = req.query.url;
 
-  if (!target) {
-    return res.status(400).json({ error: "Missing `url` parameter" });
+  if (!targetUrl) {
+    return res.status(400).json({ error: "Thiếu URL cần redirect" });
   }
 
   try {
-    const response = await fetch(target, {
+    const response = await fetch(targetUrl, {
       method: "GET",
-      redirect: "manual", // Không follow redirect để bắt Location
+      redirect: "manual"
     });
 
     const location = response.headers.get("location");
 
-    if (response.status >= 300 && response.status < 400 && location) {
-      return res.setHeader("Access-Control-Allow-Origin", "*").status(200).json({
-        original: target,
-        redirected: location,
-      });
+    if (response.status === 301 || response.status === 302) {
+      if (!location) {
+        return res.status(403).json({ error: "Không có tiêu đề Location", status: response.status });
+      }
+      return res.json({ redirect: location });
     } else {
-      return res.setHeader("Access-Control-Allow-Origin", "*").status(400).json({
-        error: "Not a redirect or no Location header",
-        status: response.status,
-      });
+      return res.status(403).json({ error: "Không phải redirect", status: response.status });
     }
-  } catch (err) {
-    return res.setHeader("Access-Control-Allow-Origin", "*").status(500).json({
-      error: err.message,
-    });
+  } catch (error) {
+    return res.status(500).json({ error: "Lỗi máy chủ", detail: error.message });
   }
 }
