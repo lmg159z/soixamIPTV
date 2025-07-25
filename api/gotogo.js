@@ -1,29 +1,36 @@
 export default async function handler(req, res) {
-  const targetUrl = req.query.url;
+  const { url } = req.query;
 
-  if (!targetUrl) {
-    return res.status(400).json({ error: "Thiếu URL cần redirect" });
+  if (!url || !url.startsWith('http')) {
+    return res.status(400).json({ error: 'Thiếu hoặc sai URL' });
   }
 
   try {
-    const response = await fetch(targetUrl, {
-      method: "GET",
-      redirect: "manual",
+    const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36",
-        "Accept": "*/*",
-        "Referer": "https://xem.truyenhinh.click/" // Quan trọng!
-      }
+        'User-Agent': 'ExoPlayerDemo/2.15.1 (Linux; Android 13)',
+        'Referer': getRefererByHost(url),
+      },
     });
 
-    const location = response.headers.get("location");
-
-    if ((response.status === 301 || response.status === 302) && location) {
-      return res.json({ redirect: location });
-    } else {
-      return res.status(403).json({ error: "Không phải redirect", status: response.status });
+    // Copy headers hợp lệ
+    for (const [key, value] of response.headers.entries()) {
+      res.setHeader(key, value);
     }
+
+    const data = await response.arrayBuffer();
+    res.status(response.status).send(Buffer.from(data));
   } catch (error) {
-    return res.status(500).json({ error: "Lỗi máy chủ", detail: error.message });
+    res.status(500).json({ error: 'Lỗi khi fetch URL: ' + error.message });
   }
+}
+
+// Tuỳ chỉnh Referer theo domain
+function getRefererByHost(url) {
+  const hostname = new URL(url).hostname;
+  const map = {
+    'xem.truyenhinh.click': 'https://xem.truyenhinh.click',
+    'some-site.com': 'https://some-site.com',
+  };
+  return map[hostname] || `https://${hostname}`;
 }
