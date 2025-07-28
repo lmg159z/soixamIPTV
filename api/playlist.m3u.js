@@ -198,8 +198,6 @@ async function renderToM3U(channels, res) {
 }
 */
 
-
-
 export default async function handler(req, res) {
   try {
     const rows = await getDataFromSheet();
@@ -232,30 +230,18 @@ async function getDataFromSheet() {
   });
 }
 
-async function checkUrlBatch(urls) {
-  const results = await Promise.allSettled(
-    urls.map(url =>
-      fetch(url, { method: 'HEAD', timeout: 3000 }).then(res => res.ok)
-    )
-  );
-  return results.map(r => r.status === 'fulfilled' && r.value === true);
+async function checkUrl(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', timeout: 3000 });
+    return res.ok;
+  } catch (error) {
+    console.warn(`Failed to check URL ${url}: ${error}`); // Ghi log khi check URL bị lỗi
+    return false; // Coi như URL không hoạt động nếu check bị lỗi
+  }
 }
 
 async function renderToM3U(channels) {
   let m3u = "#EXTM3U\n";
-
-  // Lọc các URL cần kiểm tra
-  const checkList = channels
-    .map((ch, idx) => ({ ch, idx }))
-    .filter(item => item.ch.check === 'check');
-
-  const urlStatus = await checkUrlBatch(checkList.map(c => c.ch.streamURL));
-
-  const aliveIndexes = new Set(
-    checkList
-      .map((c, i) => (urlStatus[i] ? c.idx : null))
-      .filter(i => i !== null)
-  );
 
   for (let i = 0; i < channels.length; i++) {
     const ch = channels[i];
@@ -263,9 +249,13 @@ async function renderToM3U(channels) {
       ? ch.logo
       : `https://lmg159z.github.io/soixamTV/wordspage/image/logo/${ch.logo}`;
 
-    if (ch.check === 'check' && !aliveIndexes.has(i)) {
-      console.log(`❌ DEAD: ${ch.name}`);
-      continue;
+    let isAlive = true;
+    if (ch.check === 'check') {
+      isAlive = await checkUrl(ch.streamURL);
+      if (!isAlive) {
+        console.log(`❌ DEAD: ${ch.name}`);
+        continue;
+      }
     }
 
     if (ch.DRM === true) {
