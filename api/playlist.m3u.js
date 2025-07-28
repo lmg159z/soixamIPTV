@@ -98,7 +98,7 @@ function renderToM3U(channels, res) {
 */
 
 
-
+/*
 // Hàm lấy dữ liệu từ Google Sheets và parse thành JSON
 export default async function handler(req, res) {
   try {
@@ -195,4 +195,110 @@ async function renderToM3U(channels, res) {
   res.setHeader("Content-Type", "audio/x-mpegurl");
   res.setHeader("Content-Disposition", 'inline; filename="playlist.m3u"');
   res.status(200).send(m3u);
+}
+*/
+
+
+
+export default async function handler(req, res) {
+  try {
+    const rows = await getDataFromSheet();
+    const m3u = await renderToM3U(rows);
+    res.setHeader("Content-Type", "audio/x-mpegurl");
+    res.setHeader("Content-Disposition", 'inline; filename="playlist.m3u"');
+    res.status(200).send(m3u);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Lỗi khi lấy dữ liệu từ Google Sheet");
+  }
+}
+
+async function getDataFromSheet() {
+  const response = await fetch(`https://docs.google.com/spreadsheets/d/1hSEcXxxEkbgq8203f_sTKAi3ZNEnFNoBnr7f3fsfzYE/gviz/tq?gid=0&tqx=out:json`);
+  if (!response.ok) throw new Error(`Lỗi HTTP: ${response.status}`);
+  const text = await response.text();
+  const jsonText = text.match(/(?<=setResponse\().*(?=\);)/s)[0];
+  const raw = JSON.parse(jsonText);
+
+  const table = raw.table;
+  const cols = table.cols.map(col => col.label);
+
+  return table.rows.map(row => {
+    const obj = {};
+    row.c.forEach((cell, i) => {
+      obj[cols[i]] = cell ? cell.v : null;
+    });
+    return obj;
+  });
+}
+
+async function checkUrlBatch(urls) {
+  const results = await Promise.allSettled(
+    urls.map(url =>
+      fetch(url, { method: 'HEAD', timeout: 3000 }).then(res => res.ok)
+    )
+  );
+  return results.map(r => r.status === 'fulfilled' && r.value === true);
+}
+
+async function renderToM3U(channels) {
+  let m3u = "#EXTM3U\n";
+
+  // Lọc các URL cần kiểm tra
+  const checkList = channels
+    .map((ch, idx) => ({ ch, idx }))
+    .filter(item => item.ch.check === 'check');
+
+  const urlStatus = await checkUrlBatch(checkList.map(c => c.ch.streamURL));
+
+  const aliveIndexes = new Set(
+    checkList
+      .map((c, i) => (urlStatus[i] ? c.idx : null))
+      .filter(i => i !== null)
+  );
+
+  for (let i = 0; i < channels.length; i++) {
+    const ch = channels[i];
+    const logoChannel = ch.logo?.startsWith("http")
+      ? ch.logo
+      : `https://lmg159z.github.io/soixamTV/wordspage/image/logo/${ch.logo}`;
+
+    if (ch.check === 'check' && !aliveIndexes.has(i)) {
+      console.log(`❌ DEAD: ${ch.name}`);
+      continue;
+    }
+
+    if (ch.DRM === true) {
+      if (ch.typeClearnKey === "base64") {
+        m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+        m3u += `#EXTVLCOPT:http-user-agent=Mozilla/5.0\n`;
+        m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_type=org.w3.clearkey\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_key={"keys":[{"kty":"oct","k":"${ch.key}","kid":"${ch.keyID}"}],"type":"temporary"}\n`;
+        m3u += `${ch.streamURL}\n`;
+      } else if (ch.typeClearnKey === "hex") {
+        m3u += `#EXTVLCOPT:http-user-agent=Mozilla/5.0\n`;
+        m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_type=${ch.license_type}\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_key=${ch.key}:${ch.keyID}\n`;
+        m3u += `#EXTINF:-1 tvg-id="" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+        m3u += `${ch.streamURL}\n`;
+      } else if (ch.typeClearnKey === "url") {
+        m3u += `#EXTINF:-1 tvg-id="channel_${ch.STT}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+        m3u += `#EXTVLCOPT:http-user-agent=Mozilla/5.0\n`;
+        m3u += `#KODIPROP:inputstreamaddon=inputstream.adaptive\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.manifest_type=dash\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_type=${ch.license_type}\n`;
+        m3u += `#KODIPROP:inputstream.adaptive.license_key=${ch.kURL}\n`;
+        m3u += `${ch.streamURL}\n`;
+      }
+    } else {
+      m3u += `#EXTINF:-1 tvg-id="channel_${ch.id}" tvg-logo="${logoChannel}" group-title="${ch.group}",${ch.name}\n`;
+      m3u += `${ch.streamURL}\n`;
+    }
+  }
+
+  return m3u;
 }
